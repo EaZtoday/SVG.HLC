@@ -4,7 +4,7 @@ import PresentationForm from './components/PresentationForm';
 import PresentationList from './components/PresentationList';
 import DoctorList from './components/DoctorList';
 import DoctorDetail from './components/DoctorDetail';
-import MissionDashboard from './components/MissionDashboard';
+import MissionControl from './components/MissionControl';
 import BigButton from './components/ui/BigButton';
 import { exportToCSV } from './utils/exportCSV';
 import { aggregateDoctors } from './utils/aggregateDoctors';
@@ -124,11 +124,10 @@ function App() {
 
   if (view === 'dashboard') {
     return (
-      <div className="min-h-screen bg-primary-50 p-4">
-        <MissionDashboard
+      <div className="min-h-screen bg-slate-50 p-0">
+        <MissionControl
           presentations={presentations}
           cooperativeDoctors={cooperativeDoctors}
-          hemoOncoCooperative={hemoOncoCooperative}
           onBack={() => setView('home')}
         />
       </div>
