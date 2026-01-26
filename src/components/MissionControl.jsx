@@ -119,18 +119,53 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
     }, [otherGoals]);
 
     // Auto-track presentations
+    // Auto-track presentations & Medical School milestones
     useEffect(() => {
         if (otherGoals.length > 0) {
-            const presGoal = otherGoals.find(g => g.id === 'presentations');
+            let nextGoals = [...otherGoals];
+            let changed = false;
+
+            // 1. Total Presentations Count (Standard Tracking)
+            const presGoal = nextGoals.find(g => g.id === 'presentations');
             const actualCount = presentations.length;
 
             if (presGoal?.autoTrack && presGoal.current !== actualCount) {
-                setOtherGoals(prev => prev.map(g =>
+                nextGoals = nextGoals.map(g =>
                     g.id === 'presentations' ? { ...g, current: actualCount } : g
-                ));
+                );
+                changed = true;
+            }
+
+            // 2. Medical Schools Checklist (Intelligent Sync)
+            const medSchoolGoal = nextGoals.find(g => g.id === 'medical-schools');
+            if (medSchoolGoal) {
+                const updatedChecklist = medSchoolGoal.checklist.map(item => {
+                    const hasPresentation = presentations.some(p =>
+                        p.facility.toLowerCase().includes(item.label.toLowerCase())
+                    );
+                    if (item.done !== hasPresentation) {
+                        if (!item.done && hasPresentation) {
+                            setTimeout(() => triggerCelebration(`${item.label} Registered! ✨`), 200);
+                        }
+                        return { ...item, done: hasPresentation };
+                    }
+                    return item;
+                });
+
+                const newCurrent = updatedChecklist.filter(i => i.done).length;
+                if (JSON.stringify(updatedChecklist) !== JSON.stringify(medSchoolGoal.checklist)) {
+                    nextGoals = nextGoals.map(g =>
+                        g.id === 'medical-schools' ? { ...g, checklist: updatedChecklist, current: newCurrent } : g
+                    );
+                    changed = true;
+                }
+            }
+
+            if (changed) {
+                setOtherGoals(nextGoals);
             }
         }
-    }, [presentations]);
+    }, [presentations, otherGoals.length]); // Track presentations and goal structure
 
     // Auto-track doctor specialties
     useEffect(() => {
@@ -293,8 +328,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                         </svg>
                     </button>
                     <div className="flex-1 text-left">
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tightest leading-none">Mission Control</h1>
-                        <p className="text-[10px] text-primary-600 font-black uppercase tracking-[0.3em] mt-1">St. Vincent Strategic Oversight</p>
+                        <h1 className="text-5xl font-black text-slate-900 tracking-tightest leading-none">St. Vincent HLC</h1>
                     </div>
                 </div>
 
@@ -306,7 +340,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                     </div>
                     <div className="bg-white p-10 rounded-[3rem] shadow-ios border border-white flex flex-col items-center justify-center text-center">
                         <div className="text-7xl font-black text-emerald-500 mb-2 tabular-nums tracking-tightest">{totalDoctorsEnrolled}</div>
-                        <div className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Enlisted Doctors</div>
+                        <div className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">CDL Doctors</div>
                     </div>
                 </div>
 
@@ -324,8 +358,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                                 </svg>
                             </div>
                             <div>
-                                <h4 className="text-2xl font-black text-slate-900 tracking-tight">Physician Enlistment</h4>
-                                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">{GOALS_CONFIG.year} Strategic Quota</p>
+                                <h4 className="text-3xl font-black text-slate-900 tracking-tight">Doctor Outreach 2026</h4>
                             </div>
                         </div>
 
@@ -334,7 +367,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                             <div className="flex justify-between items-end">
                                 <div className="space-y-1">
                                     <div className="text-lg font-black text-slate-700">Total Enrolled</div>
-                                    <div className="text-xs text-slate-400 font-bold italic">Tracking cooperative buy-in</div>
+                                    <div className="text-xs text-slate-400 font-bold italic">Building our Cooperative Doctor List</div>
                                 </div>
                                 <div className="text-4xl font-black text-emerald-600 tabular-nums">{totalDoctorsEnrolled} <span className="text-xl text-slate-300">/ {totalDoctorsTarget}</span></div>
                             </div>
@@ -376,7 +409,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                                                     </span>
                                                     {doc.priority && (
                                                         <div className="text-[12px] font-black text-red-500 uppercase tracking-widest mt-1 flex items-center gap-1">
-                                                            <span className="animate-pulse">●</span> MANDATORY MISSION
+                                                            ★ Priority
                                                         </div>
                                                     )}
                                                 </div>
@@ -414,17 +447,13 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                                                     style={{ width: `${Math.min(progress, 100)}%` }}
                                                 />
                                             </div>
-                                            <div className="flex justify-between items-center text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                                                <span>Mission Progress</span>
-                                                <span className={isComplete ? 'text-emerald-600' : ''}>{Math.round(progress)}% Optimized</span>
-                                            </div>
                                         </div>
 
                                         {/* Controls Grid */}
                                         <div className="grid grid-cols-2 gap-8">
                                             {/* Enrolled Column */}
                                             <div className="space-y-4">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left block ml-1">Current Enlisted</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left block ml-1">Enrolled</label>
                                                 <div className="flex items-center bg-slate-50 p-2 rounded-[2rem] border border-slate-100 shadow-inner">
                                                     <button
                                                         onClick={() => updateDoctorCount(doc.id, -1)}
@@ -444,7 +473,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
 
                                             {/* Target Column */}
                                             <div className="space-y-4">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left block ml-1">Success Goal</label>
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-left block ml-1">Goal</label>
                                                 <div className="flex items-center bg-slate-50 p-2 rounded-[2rem] border border-slate-100 shadow-inner">
                                                     <button
                                                         onClick={() => updateTargetNumber(doc.id, doc.target - 1)}
@@ -481,32 +510,32 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                             </button>
                         ) : (
                             <div className="mt-8 p-8 rounded-[2.5rem] bg-slate-50 border-2 border-slate-100 animate-in fade-in slide-in-from-top-4 duration-500 text-left">
-                                <h5 className="text-xl font-black text-slate-900 mb-6 tracking-tight">Add Mission Priority</h5>
+                                <h5 className="text-xl font-black text-slate-900 mb-6 tracking-tight">Add Specialty Goal</h5>
 
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="granny-label !text-xs !mb-2">Physical Specialty</label>
+                                        <label className="granny-label !text-xs !mb-2">Specialty</label>
                                         <select
                                             value={newSpecialty}
                                             onChange={(e) => setNewSpecialty(e.target.value)}
                                             className="ios-input !text-lg !p-5"
                                         >
-                                            <option value="">Choose Priority...</option>
+                                            <option value="">Choose Specialty...</option>
                                             {availableSpecialties.map(s => (
                                                 <option key={s} value={s}>{s}</option>
                                             ))}
-                                            <option value="custom">➕ Custom Manual Label</option>
+                                            <option value="custom">➕ Add your own...</option>
                                         </select>
                                     </div>
 
                                     {newSpecialty === 'custom' && (
                                         <div className="animate-in fade-in duration-300">
-                                            <label className="granny-label !text-xs !mb-2">Custom Label Name</label>
+                                            <label className="granny-label !text-xs !mb-2">Specialty Name</label>
                                             <input
                                                 type="text"
                                                 value={customSpecialty}
                                                 onChange={(e) => setCustomSpecialty(e.target.value)}
-                                                placeholder="Enter mission name..."
+                                                placeholder="Enter name..."
                                                 className="ios-input !text-lg !p-5"
                                             />
                                         </div>
@@ -544,7 +573,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                                             disabled={!newSpecialty || (newSpecialty === 'custom' && !customSpecialty)}
                                             className="flex-1 p-5 rounded-[1.5rem] bg-slate-900 text-white font-black uppercase tracking-widest text-xs btn-press disabled:opacity-30"
                                         >
-                                            Engage Target
+                                            Add Goal
                                         </button>
                                     </div>
                                 </div>
@@ -557,7 +586,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                 {/* OTHER GOALS GRID */}
                 {/* ==================== */}
                 <div className="mb-12 text-left">
-                    <h2 className="granny-label mb-6">Strategic Objectives</h2>
+                    <h2 className="granny-label mb-6">2026 SMART Goals</h2>
 
                     <div className="grid grid-cols-2 gap-6 text-left">
                         {otherGoals.map(goal => {
@@ -651,7 +680,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                                     {isExpanded && !goal.type && (
                                         <div className={`mt-4 bg-white rounded-[2rem] p-6 shadow-2xl border-2 ${c.border} animate-in fade-in slide-in-from-top-2 duration-300`}>
                                             <div className="flex justify-between items-center">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Victory Condition:</span>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Goal Target:</span>
                                                 <span className={`text-2xl font-black ${c.text} tabular-nums`}>
                                                     {goal.targetMax ? `${goal.targetMin}-${goal.targetMax}` : `${goal.targetMin}+`}
                                                 </span>
@@ -672,9 +701,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                         </svg>
                     </div>
                     <div className="relative z-10 space-y-4">
-                        <div className="inline-block px-4 py-1.5 bg-primary-500 rounded-full text-[10px] font-black text-white uppercase tracking-[0.2em] mb-2 shadow-lg shadow-primary-500/30">
-                            Core Strategic Directive
-                        </div>
+                        <div className="text-primary-500 text-4xl">⭐</div>
                         <p className="text-3xl font-bold text-white tracking-tight italic leading-snug">
                             "{GOALS_CONFIG.mantra}"
                         </p>
@@ -696,10 +723,7 @@ export default function MissionControl({ presentations = [], cooperativeDoctors 
                         </svg>
                     </div>
                     <div>
-                        <div className="text-xl font-black text-slate-900 tracking-tight">System Guard Active</div>
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                            {doctorTargets.length} Specialties • Secure Local Vault • Auto-Sync Armed
-                        </div>
+                        <div className="text-xl font-black text-slate-900 tracking-tight">✓ Saved locally</div>
                     </div>
                 </div>
             </div>

@@ -59,7 +59,16 @@ export default function usePresentations() {
 
     // Derive unique saved facilities from history
     const savedFacilities = useMemo(() => {
-        const facilities = new Set(presentations.map(p => p.facility).filter(Boolean));
+        const defaultFacilities = [
+            'St. James Medical School',
+            'Trinity Medical School',
+            'ASU',
+            'Nursing Schools'
+        ];
+        const facilities = new Set([
+            ...defaultFacilities,
+            ...presentations.map(p => p.facility).filter(Boolean)
+        ]);
         return Array.from(facilities).sort();
     }, [presentations]);
 

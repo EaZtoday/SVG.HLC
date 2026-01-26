@@ -5,6 +5,7 @@ import PresentationList from './components/PresentationList';
 import DoctorList from './components/DoctorList';
 import DoctorDetail from './components/DoctorDetail';
 import MissionControl from './components/MissionControl';
+import StrategicRadar from './components/StrategicRadar';
 import BigButton from './components/ui/BigButton';
 import { exportToCSV } from './utils/exportCSV';
 import { aggregateDoctors } from './utils/aggregateDoctors';
@@ -64,6 +65,20 @@ function App() {
   const handleSelectDoctor = (doc) => {
     setSelectedDoctor(doc);
     setView('doctor-detail');
+  };
+
+  const handleQuickAction = (action) => {
+    const prepopulated = {
+      ...initialFormState,
+      date: new Date().toISOString().split('T')[0],
+      facility: action.type === 'facility' ? action.name : '',
+      doctorName: action.type === 'doctor' ? action.name : '',
+      specialty: action.type === 'doctor' ? [action.specialty] : []
+    };
+    setEditingItem(null);
+    setView('form');
+    // We override the initial state for this specific transition
+    setEditingItem(prepopulated);
   };
 
   if (view === 'form') {
@@ -150,14 +165,20 @@ function App() {
               <img src={familyLogo} alt="Logo" className="w-14 h-14 brightness-0 invert" />
             </div>
             <div className="space-y-1">
-              <h1 className="text-4xl font-black tracking-tightest drop-shadow-lg leading-tight">
-                Presentation Tracker
+              <h1 className="text-4xl font-black tracking-tightest drop-shadow-lg leading-tight uppercase">
+                St. Vincent HLC
               </h1>
-              <p className="text-lg opacity-90 font-bold tracking-[0.2em] uppercase">St. Vincent HLC</p>
+              <p className="text-lg opacity-90 font-bold tracking-[0.2em] uppercase">Helping hands for hospitals</p>
             </div>
           </div>
         </div>
       </div>
+
+      <StrategicRadar
+        presentations={presentations}
+        doctors={currentDoctors}
+        onQuickAction={handleQuickAction}
+      />
 
       <div className="w-full max-w-md px-6 space-y-6">
         <div className="space-y-4">
@@ -168,7 +189,7 @@ function App() {
 
           <BigButton onClick={() => setView('dashboard')} className="bg-primary-600 text-white h-24 text-2xl">
             <Target size={32} strokeWidth={2.5} />
-            Goal Tracker
+            Goals & Progress
           </BigButton>
         </div>
 
@@ -179,7 +200,7 @@ function App() {
           </BigButton>
           <BigButton onClick={() => setView('doctors')} variant="secondary" className="h-28 text-lg gap-2">
             <Stethoscope size={28} />
-            Conversations with Doctors
+            Doctor List
           </BigButton>
         </div>
 
