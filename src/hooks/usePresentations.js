@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { supabase } from '../lib/supabase';
 
 const initialFormState = {
     date: '',
@@ -22,42 +23,99 @@ const initialFormState = {
 };
 
 export default function usePresentations() {
-    const [presentations, setPresentations] = useState(() => {
-        const saved = localStorage.getItem('presentations');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                // Migration: Ensure specialty is an array if it was a string
-                return parsed.map(p => ({
-                    ...p,
-                    specialty: Array.isArray(p.specialty) ? p.specialty : (p.specialty ? [p.specialty] : [])
-                }));
-            } catch (e) {
-                console.error("Failed to load presentations", e);
-            }
-        }
-        return [];
-    });
+    const [presentations, setPresentations] = useState([]);
+    const [loading, setLoading] = useState(true);
 
+    // Load presentations from Supabase on mount
     useEffect(() => {
-        localStorage.setItem('presentations', JSON.stringify(presentations));
-    }, [presentations]);
+        loadPresentations();
+    }, []);
 
-    const addPresentation = (formData) => {
-        const newPres = { ...formData, id: Date.now() };
-        setPresentations(prev => [newPres, ...prev]);
-        return newPres;
+    const loadPresentations = async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('presentations')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            // Transform data to match your format
+            const transformed = (data || []).map(p => ({
+                ...p,
+                specialty: Array.isArray(p.specialty) ? p.specialty : (p.specialty ? [p.specialty] : []),
+                sisters: p.sisters || false,
+                inPerson: p.inPerson || false,
+                online: p.online || false,
+                powerPoint: p.powerPoint || false,
+                exhibitDisplay: p.exhibitDisplay || false,
+                cme: p.cme || false
+            }));
+
+            setPresentations(transformed);
+        } catch (error) {
+            console.error('Error loading presentations:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const updatePresentation = (id, formData) => {
-        setPresentations(prev => prev.map(p => p.id === id ? { ...formData, id } : p));
+    const addPresentation = async (formData) => {
+        try {
+            const { data, error } = await supabase
+                .from('presentations')
+                .insert([formData])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            const newPres = {
+                ...data,
+                specialty: Array.isArray(data.specialty) ? data.specialty : (data.specialty ? [data.specialty] : [])
+            };
+            
+            setPresentations(prev => [newPres, ...prev]);
+            return newPres;
+        } catch (error) {
+            console.error('Error adding presentation:', error);
+            throw error;
+        }
     };
 
-    const deletePresentation = (id) => {
-        setPresentations(prev => prev.filter(p => p.id !== id));
+    const updatePresentation = async (id, formData) => {
+        try {
+            const { error } = await supabase
+                .from('presentations')
+                .update(formData)
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setPresentations(prev => prev.map(p => p.id === id ? { ...formData, id } : p));
+        } catch (error) {
+            console.error('Error updating presentation:', error);
+            throw error;
+        }
     };
 
-    // Derive unique saved facilities from history
+    const deletePresentation = async (id) => {
+        try {
+            const { error } = await supabase
+                .from('presentations')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setPresentations(prev => prev.filter(p => p.id !== id));
+        } catch (error) {
+            console.error('Error deleting presentation:', error);
+            throw error;
+        }
+    };
+
     const savedFacilities = useMemo(() => {
         const facilities = new Set(presentations.map(p => p.facility).filter(Boolean));
         return Array.from(facilities).sort();
@@ -72,7 +130,6 @@ export default function usePresentations() {
         };
     };
 
-    // Derive unique saved presenters from history
     const savedPresenters = useMemo(() => {
         const presenters = new Set();
         presentations.forEach(p => {
@@ -83,7 +140,6 @@ export default function usePresentations() {
         return Array.from(presenters).sort();
     }, [presentations]);
 
-    // Derive unique saved doctor names from history
     const savedDoctors = useMemo(() => {
         const doctors = new Set(presentations.map(p => p.doctorName).filter(Boolean));
         return Array.from(doctors).sort();
@@ -98,6 +154,7 @@ export default function usePresentations() {
         savedFacilities,
         savedPresenters,
         savedDoctors,
-        initialFormState
+        initialFormState,
+        loading
     };
 }
